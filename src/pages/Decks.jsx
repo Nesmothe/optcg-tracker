@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../supabaseClient'
+import UsernameTag from '../components/UsernameTag.jsx'
 
 export default function Decks() {
   const [decks, setDecks] = useState([])
@@ -7,12 +8,17 @@ export default function Decks() {
   const [leader, setLeader] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [userId, setUserId] = useState(null)
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => setUserId(data.user?.id))
+  }, [])
 
   async function load() {
     setLoading(true)
     const { data, error } = await supabase
       .from('decks')
-      .select('*')
+      .select('*, profiles(username)')
       .order('created_at', { ascending: false })
     if (error) setError(error.message)
     else setDecks(data)
@@ -67,15 +73,18 @@ export default function Decks() {
       ) : (
         <table>
           <thead>
-            <tr><th>Deck</th><th>Leader</th><th></th></tr>
+            <tr><th>Deck</th><th>Leader</th><th>Owner</th><th></th></tr>
           </thead>
           <tbody>
             {decks.map((d) => (
               <tr key={d.id}>
                 <td>{d.name}</td>
                 <td>{d.leader}</td>
+                <td><UsernameTag username={d.profiles?.username} /></td>
                 <td>
-                  <button onClick={() => removeDeck(d.id)} style={{ fontSize: '0.8rem' }}>Remove</button>
+                  {d.owner_id === userId && (
+                    <button onClick={() => removeDeck(d.id)} style={{ fontSize: '0.8rem' }}>Remove</button>
+                  )}
                 </td>
               </tr>
             ))}

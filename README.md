@@ -40,6 +40,23 @@ Easiest path is Vercel:
 
 Netlify works the same way if you prefer it.
 
+## Updating an already-deployed app (usernames + colors)
+
+If you already set this up before usernames existed, you need to run one more
+SQL migration and redeploy:
+
+1. In Supabase, go to **SQL Editor → New query**, paste the contents of
+   `supabase/migration_2_profiles.sql`, and run it. This adds a `profiles`
+   table, gives every existing account a placeholder username (derived from
+   their email), and links decks/matches/notes to it.
+2. Pull the latest code, commit, and push to GitHub — Vercel will redeploy
+   automatically.
+3. Next time each person logs in, they'll get a **one-time "pick a
+   username"** prompt (this also fires for accounts that already existed
+   before this update, replacing their placeholder). After that, their name
+   shows up — consistently color-coded, like WhatsApp — next to every deck,
+   match, and matchup note across the app.
+
 ## Notes on the data model
 - **Decks** belong to one owner (you can't log matches for a deck you didn't create).
 - **Matches** record your deck, the opponent's deck (free text — they don't need an

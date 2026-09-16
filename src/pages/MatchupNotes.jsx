@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../supabaseClient'
+import UsernameTag from '../components/UsernameTag.jsx'
 
 export default function MatchupNotes() {
   const [notes, setNotes] = useState([])
@@ -8,11 +9,16 @@ export default function MatchupNotes() {
   const [note, setNote] = useState('')
   const [error, setError] = useState('')
   const [filter, setFilter] = useState('')
+  const [userId, setUserId] = useState(null)
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => setUserId(data.user?.id))
+  }, [])
 
   async function load() {
     const { data, error } = await supabase
       .from('matchup_notes')
-      .select('*')
+      .select('*, profiles(username)')
       .order('created_at', { ascending: false })
     if (error) setError(error.message)
     else setNotes(data)
@@ -84,9 +90,14 @@ export default function MatchupNotes() {
               <strong style={{ fontFamily: 'var(--font-mono)', fontSize: '0.85rem', color: 'var(--brass-bright)' }}>
                 {n.your_deck} vs {n.opponent_deck}
               </strong>
-              <button onClick={() => removeNote(n.id)} style={{ fontSize: '0.75rem' }}>Remove</button>
+              {n.author_id === userId && (
+                <button onClick={() => removeNote(n.id)} style={{ fontSize: '0.75rem' }}>Remove</button>
+              )}
             </div>
-            <p style={{ margin: 0, color: 'var(--parchment)' }}>{n.note}</p>
+            <p style={{ margin: '0 0 0.4rem 0', color: 'var(--parchment)' }}>{n.note}</p>
+            <p style={{ margin: 0, fontSize: '0.78rem' }}>
+              — <UsernameTag username={n.profiles?.username} />
+            </p>
           </div>
         ))
       )}

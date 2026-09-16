@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
 import { supabase } from '../supabaseClient'
+import UsernameTag from '../components/UsernameTag.jsx'
 
 export default function Dashboard() {
   const [matches, setMatches] = useState([])
@@ -11,7 +12,7 @@ export default function Dashboard() {
   useEffect(() => {
     async function load() {
       const [{ data: m }, { data: d }] = await Promise.all([
-        supabase.from('matches').select('*, decks(name, leader)').order('played_at', { ascending: false }),
+        supabase.from('matches').select('*, decks(name, leader), profiles(username)').order('played_at', { ascending: false }),
         supabase.from('decks').select('id, name'),
       ])
       setMatches(m || [])
@@ -105,7 +106,7 @@ export default function Dashboard() {
         </div>
       )}
 
-      <div className="card">
+      <div className="card" style={{ marginBottom: '1.5rem' }}>
         <h3>{deckFilter === 'all' ? 'Toughest matchups (all decks)' : 'Matchup breakdown'}</h3>
         <table>
           <thead>
@@ -117,6 +118,29 @@ export default function Dashboard() {
                 <td>{o.name}</td>
                 <td><span className="win-tag">{o.wins}</span>–<span className="loss-tag">{o.total - o.wins}</span></td>
                 <td>{o.winrate}%</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="card">
+        <h3>Recent matches</h3>
+        <table>
+          <thead>
+            <tr><th>Player</th><th>Deck</th><th>Opponent</th><th>Result</th></tr>
+          </thead>
+          <tbody>
+            {filtered.slice(0, 15).map((m) => (
+              <tr key={m.id}>
+                <td><UsernameTag username={m.profiles?.username} /></td>
+                <td>{m.decks?.name}</td>
+                <td>{m.opponent_deck}</td>
+                <td>
+                  {m.result === 'win'
+                    ? <span className="win-tag">Win</span>
+                    : <span className="loss-tag">Loss</span>}
+                </td>
               </tr>
             ))}
           </tbody>
