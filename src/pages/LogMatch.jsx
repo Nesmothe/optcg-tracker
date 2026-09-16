@@ -171,18 +171,20 @@ export default function LogMatch() {
           <div className="table-scroll">
           <table>
             <thead>
-              <tr><th>Deck</th><th>Opponent</th><th>Result</th><th></th></tr>
+              <tr><th>Deck</th><th>Opponent</th><th>Vs. player</th><th>Result</th><th>Notes</th><th></th></tr>
             </thead>
             <tbody>
               {myMatches.map((m) => (
                 <tr key={m.id}>
                   <td>{m.decks?.name}</td>
                   <td>{m.opponent_deck}</td>
+                  <td>{m.opponent_player || '—'}</td>
                   <td>
                     {m.result === 'win'
                       ? <span className="win-tag">Win</span>
                       : <span className="loss-tag">Loss</span>}
                   </td>
+                  <td style={{ whiteSpace: 'normal', maxWidth: 220 }}>{m.notes || '—'}</td>
                   <td style={{ display: 'flex', gap: '0.5rem' }}>
                     <button onClick={() => startEdit(m)} style={{ fontSize: '0.78rem' }}>Edit</button>
                     <button onClick={() => handleDelete(m.id)} style={{ fontSize: '0.78rem' }}>Remove</button>

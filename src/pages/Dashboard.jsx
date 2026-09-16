@@ -217,7 +217,7 @@ export default function Dashboard() {
         <div className="table-scroll">
         <table>
           <thead>
-            <tr><th>Player</th><th>Deck</th><th>Opponent</th><th>Result</th></tr>
+            <tr><th>Player</th><th>Deck</th><th>Opponent</th><th>Vs. player</th><th>Result</th><th>Notes</th></tr>
           </thead>
           <tbody>
             {finalFiltered.slice(0, 15).map((m) => (
@@ -225,11 +225,13 @@ export default function Dashboard() {
                 <td><UsernameTag username={m.profiles?.username} /></td>
                 <td>{m.decks?.name}</td>
                 <td>{m.opponent_deck}</td>
+                <td>{m.opponent_player || '—'}</td>
                 <td>
                   {m.result === 'win'
                     ? <span className="win-tag">Win</span>
                     : <span className="loss-tag">Loss</span>}
                 </td>
+                <td style={{ whiteSpace: 'normal', maxWidth: 220 }}>{m.notes || '—'}</td>
               </tr>
             ))}
           </tbody>
