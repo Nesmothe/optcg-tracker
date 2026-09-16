@@ -71,6 +71,7 @@ export default function Decks() {
       ) : decks.length === 0 ? (
         <p className="empty-state">No decks logged yet — add your first one above.</p>
       ) : (
+        <div className="table-scroll">
         <table>
           <thead>
             <tr><th>Deck</th><th>Leader</th><th>Owner</th><th></th></tr>
@@ -90,6 +91,7 @@ export default function Decks() {
             ))}
           </tbody>
         </table>
+        </div>
       )}
     </div>
   )
