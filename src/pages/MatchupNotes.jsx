@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../supabaseClient'
 import UsernameTag from '../components/UsernameTag.jsx'
+import LeaderSearch from '../components/LeaderSearch.jsx'
 
 export default function MatchupNotes() {
   const [notes, setNotes] = useState([])
@@ -29,6 +30,7 @@ export default function MatchupNotes() {
   async function addNote(e) {
     e.preventDefault()
     setError('')
+    if (!yourDeck.trim() || !opponentDeck.trim()) { setError('Both deck names are required.'); return }
     const { data: { user } } = await supabase.auth.getUser()
     const { error } = await supabase.from('matchup_notes').insert({
       author_id: user.id, your_deck: yourDeck, opponent_deck: opponentDeck, note,
@@ -56,13 +58,11 @@ export default function MatchupNotes() {
           <div className="form-grid">
             <div>
               <label htmlFor="yd">Your deck (leader)</label>
-              <input id="yd" required value={yourDeck} onChange={(e) => setYourDeck(e.target.value)}
-                placeholder="e.g. Purple Luffy" />
+              <LeaderSearch id="yd" value={yourDeck} onTextChange={setYourDeck} placeholder="e.g. Purple Luffy" />
             </div>
             <div>
               <label htmlFor="od">Opponent deck (leader)</label>
-              <input id="od" required value={opponentDeck} onChange={(e) => setOpponentDeck(e.target.value)}
-                placeholder="e.g. Red Kid" />
+              <LeaderSearch id="od" value={opponentDeck} onTextChange={setOpponentDeck} placeholder="e.g. Red Kid" />
             </div>
           </div>
           <label htmlFor="noteText">Note</label>

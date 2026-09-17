@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../supabaseClient'
+import LeaderSearch from '../components/LeaderSearch.jsx'
 
 const emptyForm = {
   deckId: '',
@@ -14,6 +15,7 @@ export default function LogMatch() {
   const [decks, setDecks] = useState([])
   const [myMatches, setMyMatches] = useState([])
   const [form, setForm] = useState(emptyForm)
+  const [opponentLeaderCard, setOpponentLeaderCard] = useState(null) // {id, name, image} once picked
   const [editingId, setEditingId] = useState(null)
   const [error, setError] = useState('')
   const [saved, setSaved] = useState(false)
@@ -59,6 +61,11 @@ export default function LogMatch() {
       wentFirst: m.went_first === null ? '' : (m.went_first ? 'yes' : 'no'),
       notes: m.notes || '',
     })
+    setOpponentLeaderCard(
+      m.opponent_leader_card_id
+        ? { id: m.opponent_leader_card_id, name: m.opponent_deck, image: m.opponent_leader_image_url }
+        : null
+    )
     setSaved(false)
     setError('')
     window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -67,6 +74,7 @@ export default function LogMatch() {
   function cancelEdit() {
     setEditingId(null)
     setForm({ ...emptyForm, deckId: decks[0]?.id || '' })
+    setOpponentLeaderCard(null)
     setError('')
   }
 
@@ -75,10 +83,13 @@ export default function LogMatch() {
     setError('')
     setSaved(false)
     if (!form.deckId) { setError('Add a deck first, on the Decks tab.'); return }
+    if (!form.opponentDeck.trim()) { setError('Enter the opponent\'s leader.'); return }
 
     const payload = {
       deck_id: form.deckId,
       opponent_deck: form.opponentDeck,
+      opponent_leader_card_id: opponentLeaderCard?.id ?? null,
+      opponent_leader_image_url: opponentLeaderCard?.image ?? null,
       opponent_player: form.opponentPlayer || null,
       result: form.result,
       went_first: form.wentFirst === '' ? null : form.wentFirst === 'yes',
@@ -98,6 +109,7 @@ export default function LogMatch() {
       setSaved(true)
       setEditingId(null)
       setForm({ ...emptyForm, deckId: form.deckId })
+      setOpponentLeaderCard(null)
       loadMyMatches(userId)
     }
   }
@@ -122,9 +134,16 @@ export default function LogMatch() {
             {decks.map((d) => <option key={d.id} value={d.id}>{d.name} ({d.leader})</option>)}
           </select>
 
-          <label htmlFor="oppDeck">Opponent's deck / leader</label>
-          <input id="oppDeck" required value={form.opponentDeck} onChange={(e) => updateField('opponentDeck', e.target.value)}
-            placeholder="e.g. Red Kid leader rush" style={{ marginBottom: '0.9rem' }} />
+          <label htmlFor="oppDeck">Opponent's leader</label>
+          <div style={{ marginBottom: '0.9rem' }}>
+            <LeaderSearch
+              id="oppDeck"
+              value={form.opponentDeck}
+              onTextChange={(v) => updateField('opponentDeck', v)}
+              onSelect={setOpponentLeaderCard}
+              placeholder="Start typing a leader name…"
+            />
+          </div>
 
           <label htmlFor="oppPlayer">Opponent (optional, if a friend)</label>
           <input id="oppPlayer" value={form.opponentPlayer} onChange={(e) => updateField('opponentPlayer', e.target.value)}
@@ -177,7 +196,12 @@ export default function LogMatch() {
               {myMatches.map((m) => (
                 <tr key={m.id}>
                   <td>{m.decks?.name}</td>
-                  <td>{m.opponent_deck}</td>
+                  <td style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    {m.opponent_leader_image_url && (
+                      <img src={m.opponent_leader_image_url} alt="" style={{ width: 22, height: 31, objectFit: 'cover', borderRadius: 2 }} />
+                    )}
+                    {m.opponent_deck}
+                  </td>
                   <td>{m.opponent_player || '—'}</td>
                   <td>
                     {m.result === 'win'

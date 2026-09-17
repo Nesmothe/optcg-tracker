@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../supabaseClient'
 import UsernameTag from '../components/UsernameTag.jsx'
+import LeaderSearch from '../components/LeaderSearch.jsx'
 
 export default function Decks() {
   const [decks, setDecks] = useState([])
   const [name, setName] = useState('')
   const [leader, setLeader] = useState('')
+  const [leaderCard, setLeaderCard] = useState(null) // {id, name, image} once picked from search
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [userId, setUserId] = useState(null)
@@ -30,13 +32,20 @@ export default function Decks() {
   async function addDeck(e) {
     e.preventDefault()
     setError('')
+    if (!leader.trim()) { setError('Pick or type a leader.'); return }
     const { data: { user } } = await supabase.auth.getUser()
     const { error } = await supabase
       .from('decks')
-      .insert({ name, leader, owner_id: user.id })
+      .insert({
+        name,
+        leader,
+        leader_card_id: leaderCard?.id ?? null,
+        leader_image_url: leaderCard?.image ?? null,
+        owner_id: user.id,
+      })
     if (error) setError(error.message)
     else {
-      setName(''); setLeader('')
+      setName(''); setLeader(''); setLeaderCard(null)
       load()
     }
   }
@@ -58,8 +67,13 @@ export default function Decks() {
           </div>
           <div>
             <label htmlFor="deckLeader">Leader card</label>
-            <input id="deckLeader" required value={leader} onChange={(e) => setLeader(e.target.value)}
-              placeholder="e.g. Monkey D. Luffy (OP01-060)" />
+            <LeaderSearch
+              id="deckLeader"
+              value={leader}
+              onTextChange={setLeader}
+              onSelect={setLeaderCard}
+              placeholder="Start typing a leader name…"
+            />
           </div>
         </form>
         {error && <p className="error-text">{error}</p>}
@@ -80,7 +94,12 @@ export default function Decks() {
             {decks.map((d) => (
               <tr key={d.id}>
                 <td>{d.name}</td>
-                <td>{d.leader}</td>
+                <td style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  {d.leader_image_url && (
+                    <img src={d.leader_image_url} alt="" style={{ width: 24, height: 34, objectFit: 'cover', borderRadius: 2 }} />
+                  )}
+                  {d.leader}
+                </td>
                 <td><UsernameTag username={d.profiles?.username} /></td>
                 <td>
                   {d.owner_id === userId && (

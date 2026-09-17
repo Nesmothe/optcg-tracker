@@ -57,6 +57,38 @@ SQL migration and redeploy:
    shows up — consistently color-coded, like WhatsApp — next to every deck,
    match, and matchup note across the app.
 
+## Updating for leader search (CROCO integration)
+
+Leader fields across the app (deck creation, opponent leader on match logging,
+and the matchup-notes deck fields) are now a live search box backed by your
+CROCO backend's card data, instead of free text.
+
+This talks to CROCO through a small relay function that lives in this
+project (`/api/croco/[...path].js`) and runs on Vercel's servers — the
+browser never calls CROCO directly, so **CROCO's own code and repo never
+need to change**, including no CORS setup on its end.
+
+Setup:
+1. In Vercel, go to this project → **Settings → Environment Variables** and
+   add `CROCO_API_URL` set to your CROCO backend's Render URL (e.g.
+   `https://your-croco-backend.onrender.com`). No `VITE_` prefix — this one
+   stays server-side only.
+2. In Supabase's SQL editor, run `supabase/migration_3_leader_cards.sql` — it
+   adds columns to store the selected card's id and art alongside the
+   existing text fields.
+3. Push this code to GitHub as usual; Vercel redeploys automatically.
+
+Note: this feature only works on the **deployed** Vercel site, not in plain
+local `npm run dev` — local Vite doesn't run the `/api` serverless function.
+Everything else in the app still works locally as normal; just test the
+leader search itself on the live URL. (If you want it locally too, install
+the Vercel CLI and run `vercel dev` instead of `npm run dev`.)
+
+If the CROCO API is unreachable or a leader isn't found (e.g. a brand-new
+set CROCO hasn't indexed yet), the field just behaves like a normal text box
+— nothing is blocked, it just won't have the search dropdown or stored art
+for that entry.
+
 ## Notes on the data model
 - **Decks** belong to one owner (you can't log matches for a deck you didn't create).
 - **Matches** record your deck, the opponent's deck (free text — they don't need an
