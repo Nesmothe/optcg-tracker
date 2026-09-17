@@ -196,3 +196,21 @@ th { color: var(--parchment-dim); font-weight: 500; font-size: 0.8rem; text-tran
 }
 
 .error-text { color: var(--loss); font-size: 0.85rem; margin-top: 0.4rem; }
+
+.ring-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 1.4rem;
+}
+.vs-group {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1.4rem;
+  flex-shrink: 0;
+}
+@media (max-width: 480px) {
+  .ring-row, .vs-group { gap: 0.9rem; }
+}
