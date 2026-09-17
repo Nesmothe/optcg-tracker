@@ -17,6 +17,7 @@ export default function LeaderSearch({ value, onTextChange, onSelect, placeholde
     if (!query || query.length < 2) { setResults([]); return }
     let cancelled = false
     setLoading(true)
+    setOpen(true)
     const t = setTimeout(async () => {
       const hits = await searchLeaders(query)
       if (!cancelled) { setResults(hits); setLoading(false); setOpen(true) }
@@ -48,7 +49,7 @@ export default function LeaderSearch({ value, onTextChange, onSelect, placeholde
         placeholder={placeholder}
         autoComplete="off"
       />
-      {open && (loading || results.length > 0) && (
+      {open && (loading || value?.trim().length >= 2) && (
         <div style={{
           position: 'absolute', zIndex: 20, top: '100%', left: 0, right: 0,
           marginTop: '0.25rem', background: 'var(--ink-surface-raised)',
@@ -56,6 +57,11 @@ export default function LeaderSearch({ value, onTextChange, onSelect, placeholde
           overflowY: 'auto',
         }}>
           {loading && <div style={{ padding: '0.5rem 0.7rem', color: 'var(--parchment-dim)', fontSize: '0.85rem' }}>Searching…</div>}
+          {!loading && results.length === 0 && (
+            <div style={{ padding: '0.5rem 0.7rem', color: 'var(--parchment-dim)', fontSize: '0.85rem' }}>
+              No leaders found — you can still type a name freely.
+            </div>
+          )}
           {!loading && results.map((card) => (
             <button
               key={card.id}

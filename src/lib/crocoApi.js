@@ -9,6 +9,8 @@ const API_BASE = '/api/croco'
 // fetching card details for a capped number of hits. Returns
 // [{ id, name, image }] or [] on any failure — this feature should degrade
 // gracefully rather than block deck/match logging if the API is unreachable.
+// Failures are logged to the console (not thrown) so they're easy to spot
+// in DevTools without breaking the form.
 export async function searchLeaders(query) {
   if (!query || query.trim().length < 2) return []
 
@@ -17,12 +19,20 @@ export async function searchLeaders(query) {
     searchRes = await fetch(
       `${API_BASE}/search?category=leader&name=${encodeURIComponent(query.trim())}`
     )
-  } catch {
+  } catch (e) {
+    console.error('[leader search] network error calling /api/croco/search:', e)
     return []
   }
-  if (!searchRes.ok) return []
+  if (!searchRes.ok) {
+    const body = await searchRes.text().catch(() => '')
+    console.error(`[leader search] /api/croco/search returned ${searchRes.status}:`, body)
+    return []
+  }
 
-  const { cards } = await searchRes.json().catch(() => ({ cards: [] }))
+  const { cards } = await searchRes.json().catch((e) => {
+    console.error('[leader search] failed to parse search response as JSON:', e)
+    return { cards: [] }
+  })
   if (!cards || cards.length === 0) return []
 
   // /search doesn't return card names, only ids + images — enrich a capped
@@ -31,11 +41,15 @@ export async function searchLeaders(query) {
   const enriched = await Promise.allSettled(
     capped.map(async (c) => {
       const res = await fetch(`${API_BASE}/card/${c.card_set_id}`)
-      if (!res.ok) throw new Error('lookup failed')
+      if (!res.ok) throw new Error(`card lookup for ${c.card_set_id} returned ${res.status}`)
       const detail = await res.json()
       return { id: c.card_set_id, name: detail.card_name, image: detail.card_image }
     })
   )
+
+  enriched.forEach((r) => {
+    if (r.status === 'rejected') console.error('[leader search] card lookup failed:', r.reason)
+  })
 
   return enriched
     .filter((r) => r.status === 'fulfilled' && r.value.name)

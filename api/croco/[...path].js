@@ -13,10 +13,15 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'CROCO_API_URL is not configured on the server.' })
   }
 
-  const { path, ...query } = req.query
-  const targetPath = Array.isArray(path) ? path.join('/') : (path || '')
-  const qs = new URLSearchParams(query).toString()
-  const url = `${upstream}/${targetPath}${qs ? `?${qs}` : ''}`
+  // Parse the path/query straight off req.url rather than relying on
+  // Vercel to have injected the catch-all segment into req.query — more
+  // robust across routing edge cases.
+  const fullUrl = new URL(req.url, 'http://internal')
+  const prefix = '/api/croco/'
+  const targetPath = fullUrl.pathname.startsWith(prefix)
+    ? fullUrl.pathname.slice(prefix.length)
+    : ''
+  const url = `${upstream}/${targetPath}${fullUrl.search}`
 
   try {
     const upstreamRes = await fetch(url)
@@ -25,6 +30,6 @@ export default async function handler(req, res) {
     res.setHeader('Content-Type', upstreamRes.headers.get('content-type') || 'application/json')
     return res.send(body)
   } catch (e) {
-    return res.status(502).json({ error: 'Could not reach the CROCO backend.' })
+    return res.status(502).json({ error: 'Could not reach the CROCO backend.', detail: String(e) })
   }
 }
