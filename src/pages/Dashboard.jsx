@@ -85,16 +85,32 @@ export default function Dashboard() {
     return { wins, losses: total - wins, total, rate: total ? Math.round((wins / total) * 100) : 0 }
   }, [finalFiltered])
 
+  // Everything that should scope the "by deck" rings except the deck choice
+  // itself — so picking an opponent narrows the rings to that matchup.
+  const matchesForRings = useMemo(() => {
+    let list = matchesByPlayer
+    if (vsPlayerFilter !== ALL_VALUE) list = list.filter((m) => m.opponent_player === vsPlayerFilter)
+    if (opponentFilter !== ALL_VALUE) list = list.filter((m) => m.opponent_deck === opponentFilter)
+    return list
+  }, [matchesByPlayer, vsPlayerFilter, opponentFilter])
+
   const byDeck = useMemo(() => {
     const map = {}
-    for (const m of matchesByPlayer) {
+    for (const m of matchesForRings) {
       const key = m.decks?.name || 'Unknown'
       if (!map[key]) map[key] = { name: key, wins: 0, total: 0, image: m.decks?.leader_image_url || null }
       map[key].total++
       if (m.result === 'win') map[key].wins++
     }
     return Object.values(map)
-  }, [matchesByPlayer])
+  }, [matchesForRings])
+
+  // The opponent's own leader art, for the "VS" badge next to the rings.
+  const opponentImage = useMemo(() => {
+    if (opponentFilter === ALL_VALUE) return null
+    return matches.find((m) => m.opponent_deck === opponentFilter && m.opponent_leader_image_url)
+      ?.opponent_leader_image_url ?? null
+  }, [matches, opponentFilter])
 
   const byOpponent = useMemo(() => {
     const map = {}
@@ -202,8 +218,12 @@ export default function Dashboard() {
 
       {byDeck.length > 0 && (
         <div className="card" style={{ marginBottom: '1.5rem' }}>
-          <h3>{deckFilter === ALL_DECKS ? `Winrate by deck — ${playerLabel}` : 'Winrate for this deck'}</h3>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.6rem' }}>
+          <h3>
+            {deckFilter === ALL_DECKS ? `Winrate by deck — ${playerLabel}` : 'Winrate for this deck'}
+            {opponentFilter !== ALL_VALUE ? ` vs ${opponentFilter}` : ''}
+            {vsPlayerFilter !== ALL_VALUE ? ` — against ${vsPlayerFilter}` : ''}
+          </h3>
+          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '1.6rem' }}>
             {deckFilter === ALL_DECKS
               ? byDeck.map((d) => <WinLossRing key={d.name} name={d.name} wins={d.wins} total={d.total} image={d.image} />)
               : overall.total > 0 && (
@@ -214,6 +234,30 @@ export default function Dashboard() {
                   image={deckOptions.find((d) => d.id === deckFilter)?.image}
                 />
               )}
+            {opponentFilter !== ALL_VALUE && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.9rem' }}>
+                <span style={{ fontFamily: 'var(--font-display)', fontSize: '1.1rem', color: 'var(--brass)', fontWeight: 700 }}>VS</span>
+                <div style={{ width: 84, textAlign: 'center' }}>
+                  {opponentImage ? (
+                    <img
+                      src={opponentImage}
+                      alt=""
+                      style={{ width: 84, height: 84, borderRadius: '50%', objectFit: 'cover', border: '2px solid var(--border)' }}
+                    />
+                  ) : (
+                    <div style={{
+                      width: 84, height: 84, borderRadius: '50%', border: '2px solid var(--border)',
+                      background: 'var(--ink-surface-raised)', display: 'flex', alignItems: 'center',
+                      justifyContent: 'center', fontSize: '0.7rem', color: 'var(--parchment-dim)', padding: '0 0.4rem',
+                      textAlign: 'center',
+                    }}>
+                      No art
+                    </div>
+                  )}
+                  <div style={{ marginTop: '0.5rem', fontSize: '0.85rem' }}>{opponentFilter}</div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
