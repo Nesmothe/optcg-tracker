@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
 import { supabase } from '../supabaseClient'
 import UsernameTag from '../components/UsernameTag.jsx'
+import WinLossRing from '../components/WinLossRing.jsx'
 
 const ALL_PLAYERS = 'all'
 const ALL_DECKS = 'all'
-const ALL_OPPONENTS = 'all'
+const ALL_VALUE = 'all'
 
 export default function Dashboard() {
   const [matches, setMatches] = useState([])
@@ -14,9 +14,10 @@ export default function Dashboard() {
   const [currentUserId, setCurrentUserId] = useState(null)
   const [loading, setLoading] = useState(true)
 
-  const [playerFilter, setPlayerFilter] = useState(null) // set to "me" once we know who "me" is
+  const [playerFilter, setPlayerFilter] = useState(null) // defaults to "me" once known
   const [deckFilter, setDeckFilter] = useState(ALL_DECKS)
-  const [opponentFilter, setOpponentFilter] = useState(ALL_OPPONENTS)
+  const [opponentFilter, setOpponentFilter] = useState(ALL_VALUE) // opponent deck (matchup)
+  const [vsPlayerFilter, setVsPlayerFilter] = useState(ALL_VALUE) // opponent player
 
   useEffect(() => {
     async function load() {
@@ -31,16 +32,18 @@ export default function Dashboard() {
       setProfiles(p || [])
       const uid = userData.user?.id ?? null
       setCurrentUserId(uid)
-      setPlayerFilter(uid) // default to "my own stats"
+      setPlayerFilter(uid)
       setLoading(false)
     }
     load()
   }, [])
 
-  // Reset the narrower filters whenever the player scope changes, since deck
-  // ownership and opponent history are specific to whoever is selected.
+  // Reset the narrower filters whenever a broader one changes.
   useEffect(() => { setDeckFilter(ALL_DECKS) }, [playerFilter])
-  useEffect(() => { setOpponentFilter(ALL_OPPONENTS) }, [deckFilter, playerFilter])
+  useEffect(() => {
+    setOpponentFilter(ALL_VALUE)
+    setVsPlayerFilter(ALL_VALUE)
+  }, [deckFilter, playerFilter])
 
   const matchesByPlayer = useMemo(
     () => playerFilter === ALL_PLAYERS ? matches : matches.filter((m) => m.player_id === playerFilter),
@@ -52,11 +55,31 @@ export default function Dashboard() {
     [matchesByPlayer, deckFilter]
   )
 
-  const finalFiltered = useMemo(
-    () => opponentFilter === ALL_OPPONENTS
+  // Two independent facets on top of player+deck: which opponent deck, and
+  // which opponent player. Both draw their option lists from the same scope
+  // so either can be picked (or both, together) without hiding the other.
+  const opponentDeckOptions = useMemo(() => {
+    const set = new Set(matchesByPlayerAndDeck.map((m) => m.opponent_deck).filter(Boolean))
+    return Array.from(set).sort()
+  }, [matchesByPlayerAndDeck])
+
+  const vsPlayerOptions = useMemo(() => {
+    const set = new Set(matchesByPlayerAndDeck.map((m) => m.opponent_player).filter(Boolean))
+    return Array.from(set).sort()
+  }, [matchesByPlayerAndDeck])
+
+  const afterVsPlayer = useMemo(
+    () => vsPlayerFilter === ALL_VALUE
       ? matchesByPlayerAndDeck
-      : matchesByPlayerAndDeck.filter((m) => m.opponent_deck === opponentFilter),
-    [matchesByPlayerAndDeck, opponentFilter]
+      : matchesByPlayerAndDeck.filter((m) => m.opponent_player === vsPlayerFilter),
+    [matchesByPlayerAndDeck, vsPlayerFilter]
+  )
+
+  const finalFiltered = useMemo(
+    () => opponentFilter === ALL_VALUE
+      ? afterVsPlayer
+      : afterVsPlayer.filter((m) => m.opponent_deck === opponentFilter),
+    [afterVsPlayer, opponentFilter]
   )
 
   const overall = useMemo(() => {
@@ -65,9 +88,6 @@ export default function Dashboard() {
     return { wins, losses: total - wins, total, rate: total ? Math.round((wins / total) * 100) : 0 }
   }, [finalFiltered])
 
-  // Winrate-by-deck chart respects the player scope only, so switching to
-  // "All players" gives the combined pool for every deck, per your own or a
-  // friend's individual view when a specific player is selected.
   const byDeck = useMemo(() => {
     const map = {}
     for (const m of matchesByPlayer) {
@@ -76,12 +96,12 @@ export default function Dashboard() {
       map[key].total++
       if (m.result === 'win') map[key].wins++
     }
-    return Object.values(map).map((d) => ({ ...d, winrate: Math.round((d.wins / d.total) * 100) }))
+    return Object.values(map)
   }, [matchesByPlayer])
 
   const byOpponent = useMemo(() => {
     const map = {}
-    for (const m of matchesByPlayerAndDeck) {
+    for (const m of afterVsPlayer) {
       const key = m.opponent_deck || 'Unknown'
       if (!map[key]) map[key] = { name: key, wins: 0, total: 0 }
       map[key].total++
@@ -91,10 +111,8 @@ export default function Dashboard() {
       .map((d) => ({ ...d, winrate: Math.round((d.wins / d.total) * 100) }))
       .sort((a, b) => b.total - a.total)
       .slice(0, 8)
-  }, [matchesByPlayerAndDeck])
+  }, [afterVsPlayer])
 
-  // Deck dropdown: that player's own decks, or every deck (labeled by owner)
-  // when viewing everyone combined.
   const deckOptions = useMemo(() => {
     const relevant = playerFilter === ALL_PLAYERS ? decks : decks.filter((d) => d.owner_id === playerFilter)
     return relevant.map((d) => ({
@@ -102,13 +120,6 @@ export default function Dashboard() {
       label: playerFilter === ALL_PLAYERS ? `${d.name} (${d.profiles?.username ?? 'unknown'})` : d.name,
     }))
   }, [decks, playerFilter])
-
-  // Opponent dropdown: distinct opponent decks actually faced within the
-  // current player+deck scope, so the list only ever shows real matchups.
-  const opponentOptions = useMemo(() => {
-    const set = new Set(matchesByPlayerAndDeck.map((m) => m.opponent_deck).filter(Boolean))
-    return Array.from(set).sort()
-  }, [matchesByPlayerAndDeck])
 
   if (loading) return <p className="empty-state">Loading…</p>
   if (matches.length === 0) {
@@ -121,9 +132,14 @@ export default function Dashboard() {
       ? 'you'
       : (profiles.find((p) => p.id === playerFilter)?.username ?? 'this player')
 
+  const statLabelBits = [`Winrate — ${playerLabel}`]
+  if (deckFilter !== ALL_DECKS) statLabelBits.push('this deck')
+  if (opponentFilter !== ALL_VALUE) statLabelBits.push(`vs ${opponentFilter}`)
+  if (vsPlayerFilter !== ALL_VALUE) statLabelBits.push(`against ${vsPlayerFilter}`)
+
   return (
     <div>
-      <div className="form-grid" style={{ marginBottom: '1.5rem' }}>
+      <div className="form-grid" style={{ marginBottom: '0.9rem' }}>
         <div>
           <label htmlFor="playerFilter">Whose stats</label>
           <select id="playerFilter" value={playerFilter ?? ''} onChange={(e) => setPlayerFilter(e.target.value)}>
@@ -143,24 +159,33 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {opponentOptions.length > 0 && (
-        <div style={{ marginBottom: '1.5rem', maxWidth: 260 }}>
-          <label htmlFor="opponentFilter">Against (matchup)</label>
-          <select id="opponentFilter" value={opponentFilter} onChange={(e) => setOpponentFilter(e.target.value)}>
-            <option value={ALL_OPPONENTS}>Any opponent</option>
-            {opponentOptions.map((o) => <option key={o} value={o}>{o}</option>)}
-          </select>
+      {(opponentDeckOptions.length > 0 || vsPlayerOptions.length > 0) && (
+        <div className="form-grid" style={{ marginBottom: '1.5rem' }}>
+          {opponentDeckOptions.length > 0 && (
+            <div>
+              <label htmlFor="opponentFilter">Against deck (matchup)</label>
+              <select id="opponentFilter" value={opponentFilter} onChange={(e) => setOpponentFilter(e.target.value)}>
+                <option value={ALL_VALUE}>Any deck</option>
+                {opponentDeckOptions.map((o) => <option key={o} value={o}>{o}</option>)}
+              </select>
+            </div>
+          )}
+          {vsPlayerOptions.length > 0 && (
+            <div>
+              <label htmlFor="vsPlayerFilter">Against player</label>
+              <select id="vsPlayerFilter" value={vsPlayerFilter} onChange={(e) => setVsPlayerFilter(e.target.value)}>
+                <option value={ALL_VALUE}>Anyone</option>
+                {vsPlayerOptions.map((p) => <option key={p} value={p}>{p}</option>)}
+              </select>
+            </div>
+          )}
         </div>
       )}
 
       <div className="stat-row">
         <div className="card">
           <div className="stat-figure">{overall.rate}%</div>
-          <div className="stat-label">
-            Winrate — {playerLabel}
-            {deckFilter !== ALL_DECKS && ' · this deck'}
-            {opponentFilter !== ALL_OPPONENTS && ` vs ${opponentFilter}`}
-          </div>
+          <div className="stat-label">{statLabelBits.join(' · ')}</div>
         </div>
         <div className="card">
           <div className="stat-figure">{overall.total}</div>
@@ -175,24 +200,18 @@ export default function Dashboard() {
       {deckFilter === ALL_DECKS && byDeck.length > 0 && (
         <div className="card" style={{ marginBottom: '1.5rem' }}>
           <h3>Winrate by deck — {playerLabel}</h3>
-          <ResponsiveContainer width="100%" height={Math.max(120, byDeck.length * 46)}>
-            <BarChart data={byDeck} layout="vertical" margin={{ left: 8, right: 24 }}>
-              <CartesianGrid stroke="#2a3f5a" horizontal={false} />
-              <XAxis type="number" domain={[0, 100]} stroke="#b9b2a0" tick={{ fontSize: 12 }} />
-              <YAxis type="category" dataKey="name" stroke="#b9b2a0" width={130} tick={{ fontSize: 12 }} />
-              <Tooltip
-                contentStyle={{ background: '#16273d', border: '1px solid #2a3f5a', color: '#ede6d6' }}
-                formatter={(v, n, p) => [`${v}% (${p.payload.wins}/${p.payload.total})`, 'Winrate']}
-              />
-              <Bar dataKey="winrate" fill="#c89b3c" radius={[0, 3, 3, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.6rem' }}>
+            {byDeck.map((d) => <WinLossRing key={d.name} name={d.name} wins={d.wins} total={d.total} />)}
+          </div>
         </div>
       )}
 
-      {opponentFilter === ALL_OPPONENTS && (
+      {opponentFilter === ALL_VALUE && (
         <div className="card" style={{ marginBottom: '1.5rem' }}>
-          <h3>{deckFilter === ALL_DECKS ? 'Toughest matchups' : 'Matchup breakdown for this deck'}</h3>
+          <h3>
+            {deckFilter === ALL_DECKS ? 'Toughest matchups' : 'Matchup breakdown for this deck'}
+            {vsPlayerFilter !== ALL_VALUE ? ` — against ${vsPlayerFilter}` : ''}
+          </h3>
           <div className="table-scroll">
           <table>
             <thead>
