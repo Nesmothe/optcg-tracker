@@ -208,9 +208,13 @@ th { color: var(--parchment-dim); font-weight: 500; font-size: 0.8rem; text-tran
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 1.4rem;
+  /* The ring's visible donut sits ~10px inside its own box (it doesn't
+     touch the box edge the way the portrait's circle does), so this gap
+     needs a bit extra to make the two VISIBLE gaps around "VS" match. */
+  gap: calc(1.4rem + 10px);
   flex-shrink: 0;
 }
 @media (max-width: 480px) {
-  .ring-row, .vs-group { gap: 0.9rem; }
+  .ring-row { gap: 0.9rem; }
+  .vs-group { gap: calc(0.9rem + 10px); }
 }
