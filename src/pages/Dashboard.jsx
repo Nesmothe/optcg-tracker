@@ -21,7 +21,7 @@ export default function Dashboard() {
   useEffect(() => {
     async function load() {
       const [{ data: m }, { data: p }, { data: userData }] = await Promise.all([
-        supabase.from('matches').select('*, decks(name, leader), profiles(username)').order('played_at', { ascending: false }),
+        supabase.from('matches').select('*, decks(name, leader, leader_image_url), profiles(username)').order('played_at', { ascending: false }),
         supabase.from('profiles').select('id, username'),
         supabase.auth.getUser(),
       ])
@@ -89,7 +89,7 @@ export default function Dashboard() {
     const map = {}
     for (const m of matchesByPlayer) {
       const key = m.decks?.name || 'Unknown'
-      if (!map[key]) map[key] = { name: key, wins: 0, total: 0 }
+      if (!map[key]) map[key] = { name: key, wins: 0, total: 0, image: m.decks?.leader_image_url || null }
       map[key].total++
       if (m.result === 'win') map[key].wins++
     }
@@ -118,6 +118,7 @@ export default function Dashboard() {
       map.set(m.deck_id, {
         id: m.deck_id,
         label: playerFilter === ALL_PLAYERS ? `${deckName} (${m.profiles?.username ?? 'unknown'})` : deckName,
+        image: m.decks?.leader_image_url || null,
       })
     }
     return Array.from(map.values()).sort((a, b) => a.label.localeCompare(b.label))
@@ -204,12 +205,13 @@ export default function Dashboard() {
           <h3>{deckFilter === ALL_DECKS ? `Winrate by deck — ${playerLabel}` : 'Winrate for this deck'}</h3>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.6rem' }}>
             {deckFilter === ALL_DECKS
-              ? byDeck.map((d) => <WinLossRing key={d.name} name={d.name} wins={d.wins} total={d.total} />)
+              ? byDeck.map((d) => <WinLossRing key={d.name} name={d.name} wins={d.wins} total={d.total} image={d.image} />)
               : overall.total > 0 && (
                 <WinLossRing
                   name={deckOptions.find((d) => d.id === deckFilter)?.label ?? 'This deck'}
                   wins={overall.wins}
                   total={overall.total}
+                  image={deckOptions.find((d) => d.id === deckFilter)?.image}
                 />
               )}
           </div>

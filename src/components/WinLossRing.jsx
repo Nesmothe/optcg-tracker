@@ -3,13 +3,14 @@ import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts'
 const WIN_COLOR = '#3fa796'
 const LOSS_COLOR = '#c0533e'
 
-export default function WinLossRing({ name, wins, total, size = 132 }) {
+export default function WinLossRing({ name, wins, total, image, size = 132 }) {
   const losses = total - wins
   const winrate = total ? Math.round((wins / total) * 100) : 0
   const data = [
     { key: 'Wins', value: wins },
     { key: 'Losses', value: losses },
   ]
+  const holeSize = size * 0.6 // matches the pie's innerRadius*2, so the image fills the hole exactly
 
   return (
     <div
@@ -34,19 +35,51 @@ export default function WinLossRing({ name, wins, total, size = 132 }) {
             </Pie>
           </PieChart>
         </ResponsiveContainer>
-        {/* Center of the ring — a leader card image will render here later;
-            the winrate stands in as a placeholder for now. */}
-        <div
-          style={{
-            position: 'absolute', inset: 0,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            pointerEvents: 'none',
-          }}
-        >
-          <span style={{ fontFamily: 'var(--font-mono)', fontSize: size * 0.15, color: 'var(--brass-bright)' }}>
-            {winrate}%
-          </span>
-        </div>
+
+        {image ? (
+          <>
+            {/* Leader art fills the ring's hole */}
+            <div
+              style={{
+                position: 'absolute', top: '50%', left: '50%',
+                transform: 'translate(-50%, -50%)',
+                width: holeSize, height: holeSize,
+                borderRadius: '50%', overflow: 'hidden',
+                pointerEvents: 'none',
+              }}
+            >
+              <img
+                src={image}
+                alt=""
+                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+              />
+            </div>
+            {/* Winrate badge overlaid on the bottom of the ring */}
+            <div
+              style={{
+                position: 'absolute', bottom: -2, left: '50%', transform: 'translateX(-50%)',
+                background: 'var(--ink-surface-raised)', border: '1px solid var(--border)',
+                borderRadius: 10, padding: '0.05rem 0.5rem', pointerEvents: 'none',
+              }}
+            >
+              <span style={{ fontFamily: 'var(--font-mono)', fontSize: size * 0.1, color: 'var(--brass-bright)' }}>
+                {winrate}%
+              </span>
+            </div>
+          </>
+        ) : (
+          <div
+            style={{
+              position: 'absolute', inset: 0,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              pointerEvents: 'none',
+            }}
+          >
+            <span style={{ fontFamily: 'var(--font-mono)', fontSize: size * 0.15, color: 'var(--brass-bright)' }}>
+              {winrate}%
+            </span>
+          </div>
+        )}
       </div>
       <div style={{ marginTop: '0.5rem', fontSize: '0.85rem' }}>{name}</div>
       <div style={{ fontSize: '0.75rem', color: 'var(--parchment-dim)' }}>
