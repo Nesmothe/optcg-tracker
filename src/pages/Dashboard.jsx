@@ -9,7 +9,6 @@ const ALL_VALUE = 'all'
 
 export default function Dashboard() {
   const [matches, setMatches] = useState([])
-  const [decks, setDecks] = useState([])
   const [profiles, setProfiles] = useState([])
   const [currentUserId, setCurrentUserId] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -21,14 +20,12 @@ export default function Dashboard() {
 
   useEffect(() => {
     async function load() {
-      const [{ data: m }, { data: d }, { data: p }, { data: userData }] = await Promise.all([
+      const [{ data: m }, { data: p }, { data: userData }] = await Promise.all([
         supabase.from('matches').select('*, decks(name, leader), profiles(username)').order('played_at', { ascending: false }),
-        supabase.from('decks').select('id, name, owner_id, profiles(username)'),
         supabase.from('profiles').select('id, username'),
         supabase.auth.getUser(),
       ])
       setMatches(m || [])
-      setDecks(d || [])
       setProfiles(p || [])
       const uid = userData.user?.id ?? null
       setCurrentUserId(uid)
@@ -114,12 +111,17 @@ export default function Dashboard() {
   }, [afterVsPlayer])
 
   const deckOptions = useMemo(() => {
-    const relevant = playerFilter === ALL_PLAYERS ? decks : decks.filter((d) => d.owner_id === playerFilter)
-    return relevant.map((d) => ({
-      id: d.id,
-      label: playerFilter === ALL_PLAYERS ? `${d.name} (${d.profiles?.username ?? 'unknown'})` : d.name,
-    }))
-  }, [decks, playerFilter])
+    const map = new Map()
+    for (const m of matchesByPlayer) {
+      if (!m.deck_id || map.has(m.deck_id)) continue
+      const deckName = m.decks?.name || 'Unknown deck'
+      map.set(m.deck_id, {
+        id: m.deck_id,
+        label: playerFilter === ALL_PLAYERS ? `${deckName} (${m.profiles?.username ?? 'unknown'})` : deckName,
+      })
+    }
+    return Array.from(map.values()).sort((a, b) => a.label.localeCompare(b.label))
+  }, [matchesByPlayer, playerFilter])
 
   if (loading) return <p className="empty-state">Loading…</p>
   if (matches.length === 0) {
@@ -197,11 +199,19 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {deckFilter === ALL_DECKS && byDeck.length > 0 && (
+      {byDeck.length > 0 && (
         <div className="card" style={{ marginBottom: '1.5rem' }}>
-          <h3>Winrate by deck — {playerLabel}</h3>
+          <h3>{deckFilter === ALL_DECKS ? `Winrate by deck — ${playerLabel}` : 'Winrate for this deck'}</h3>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.6rem' }}>
-            {byDeck.map((d) => <WinLossRing key={d.name} name={d.name} wins={d.wins} total={d.total} />)}
+            {deckFilter === ALL_DECKS
+              ? byDeck.map((d) => <WinLossRing key={d.name} name={d.name} wins={d.wins} total={d.total} />)
+              : overall.total > 0 && (
+                <WinLossRing
+                  name={deckOptions.find((d) => d.id === deckFilter)?.label ?? 'This deck'}
+                  wins={overall.wins}
+                  total={overall.total}
+                />
+              )}
           </div>
         </div>
       )}

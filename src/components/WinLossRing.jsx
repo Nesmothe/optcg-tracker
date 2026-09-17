@@ -1,4 +1,4 @@
-import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts'
+import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts'
 
 const WIN_COLOR = '#3fa796'
 const LOSS_COLOR = '#c0533e'
@@ -12,7 +12,10 @@ export default function WinLossRing({ name, wins, total, size = 132 }) {
   ]
 
   return (
-    <div style={{ width: size, textAlign: 'center' }}>
+    <div
+      style={{ width: size, textAlign: 'center' }}
+      title={`${wins} win${wins === 1 ? '' : 's'}, ${losses} loss${losses === 1 ? '' : 'es'} (${winrate}%)`}
+    >
       <div style={{ position: 'relative', width: size, height: size }}>
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
@@ -29,10 +32,6 @@ export default function WinLossRing({ name, wins, total, size = 132 }) {
               <Cell fill={WIN_COLOR} />
               <Cell fill={LOSS_COLOR} />
             </Pie>
-            <Tooltip
-              contentStyle={{ background: '#16273d', border: '1px solid #2a3f5a', color: '#ede6d6', fontSize: '0.8rem' }}
-              formatter={(value, key) => [`${value} ${key.toLowerCase()}`, '']}
-            />
           </PieChart>
         </ResponsiveContainer>
         {/* Center of the ring — a leader card image will render here later;

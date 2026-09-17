@@ -19,8 +19,8 @@ export default function LogMatch() {
   const [saved, setSaved] = useState(false)
   const [userId, setUserId] = useState(null)
 
-  async function loadDecks() {
-    const { data } = await supabase.from('decks').select('id, name, leader').order('created_at')
+  async function loadDecks(uid) {
+    const { data } = await supabase.from('decks').select('id, name, leader').eq('owner_id', uid).order('created_at')
     setDecks(data || [])
     return data || []
   }
@@ -38,7 +38,7 @@ export default function LogMatch() {
     async function init() {
       const { data: { user } } = await supabase.auth.getUser()
       setUserId(user.id)
-      const deckList = await loadDecks()
+      const deckList = await loadDecks(user.id)
       if (deckList.length) setForm((f) => ({ ...f, deckId: deckList[0].id }))
       await loadMyMatches(user.id)
     }
