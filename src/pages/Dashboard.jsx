@@ -6,6 +6,7 @@ import WinLossRing from '../components/WinLossRing.jsx'
 const ALL_PLAYERS = 'all'
 const ALL_DECKS = 'all'
 const ALL_VALUE = 'all'
+const RING_SIZE = 165 // ~25% bigger than WinLossRing's own default of 132
 
 export default function Dashboard() {
   const [matches, setMatches] = useState([])
@@ -223,38 +224,43 @@ export default function Dashboard() {
             {opponentFilter !== ALL_VALUE ? ` vs ${opponentFilter}` : ''}
             {vsPlayerFilter !== ALL_VALUE ? ` — against ${vsPlayerFilter}` : ''}
           </h3>
-          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '1.6rem' }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center', gap: '1.6rem' }}>
             {deckFilter === ALL_DECKS
-              ? byDeck.map((d) => <WinLossRing key={d.name} name={d.name} wins={d.wins} total={d.total} image={d.image} />)
+              ? byDeck.map((d) => <WinLossRing key={d.name} name={d.name} wins={d.wins} total={d.total} image={d.image} size={RING_SIZE} />)
               : overall.total > 0 && (
                 <WinLossRing
                   name={deckOptions.find((d) => d.id === deckFilter)?.label ?? 'This deck'}
                   wins={overall.wins}
                   total={overall.total}
                   image={deckOptions.find((d) => d.id === deckFilter)?.image}
+                  size={RING_SIZE}
                 />
               )}
             {opponentFilter !== ALL_VALUE && (
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.9rem' }}>
                 <span style={{ fontFamily: 'var(--font-display)', fontSize: '1.1rem', color: 'var(--brass)', fontWeight: 700 }}>VS</span>
-                <div style={{ width: 84, textAlign: 'center' }}>
+                <div style={{ width: RING_SIZE, textAlign: 'center' }}>
                   {opponentImage ? (
                     <img
                       src={opponentImage}
                       alt=""
-                      style={{ width: 84, height: 84, borderRadius: '50%', objectFit: 'cover', border: '2px solid var(--border)' }}
+                      style={{
+                        display: 'block', margin: '0 auto',
+                        width: RING_SIZE, height: RING_SIZE, borderRadius: '50%',
+                        objectFit: 'cover', border: '2px solid var(--border)',
+                      }}
                     />
                   ) : (
                     <div style={{
-                      width: 84, height: 84, borderRadius: '50%', border: '2px solid var(--border)',
+                      width: RING_SIZE, height: RING_SIZE, borderRadius: '50%', border: '2px solid var(--border)',
                       background: 'var(--ink-surface-raised)', display: 'flex', alignItems: 'center',
                       justifyContent: 'center', fontSize: '0.7rem', color: 'var(--parchment-dim)', padding: '0 0.4rem',
-                      textAlign: 'center',
+                      textAlign: 'center', margin: '0 auto',
                     }}>
                       No art
                     </div>
                   )}
-                  <div style={{ marginTop: '0.5rem', fontSize: '0.85rem' }}>{opponentFilter}</div>
+                  <div style={{ marginTop: '0.5rem', fontSize: '0.85rem', textAlign: 'center' }}>{opponentFilter}</div>
                 </div>
               </div>
             )}
