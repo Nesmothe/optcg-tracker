@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../supabaseClient'
 import LeaderSearch from '../components/LeaderSearch.jsx'
 import TournamentControl from '../components/TournamentControl.jsx'
+import DecklistDialog from '../components/DecklistDialog.jsx'
 
 const emptyForm = {
   deckId: '',
@@ -21,9 +22,11 @@ export default function LogMatch({ activeTournament, onTournamentChange }) {
   const [error, setError] = useState('')
   const [saved, setSaved] = useState(false)
   const [userId, setUserId] = useState(null)
+  const [attachList, setAttachList] = useState(false) // edit mode: add the deck's current list to an older match
+  const [listFor, setListFor] = useState(null) // match whose saved decklist is open in the popup
 
   async function loadDecks(uid) {
-    const { data } = await supabase.from('decks').select('id, name, leader').eq('owner_id', uid).order('created_at')
+    const { data } = await supabase.from('decks').select('id, name, leader, decklist').eq('owner_id', uid).order('created_at')
     setDecks(data || [])
     return data || []
   }
@@ -67,6 +70,7 @@ export default function LogMatch({ activeTournament, onTournamentChange }) {
         ? { id: m.opponent_leader_card_id, name: m.opponent_deck, image: m.opponent_leader_image_url }
         : null
     )
+    setAttachList(false)
     setSaved(false)
     setError('')
     window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -76,6 +80,7 @@ export default function LogMatch({ activeTournament, onTournamentChange }) {
     setEditingId(null)
     setForm({ ...emptyForm, deckId: decks[0]?.id || '' })
     setOpponentLeaderCard(null)
+    setAttachList(false)
     setError('')
   }
 
@@ -97,11 +102,21 @@ export default function LogMatch({ activeTournament, onTournamentChange }) {
       notes: form.notes || null,
     }
 
+    // The match keeps its own COPY of the deck's decklist, so it still shows
+    // what you played even after you later replace the deck's list.
+    const chosenDeck = decks.find((d) => d.id === form.deckId)
+    const deckList = chosenDeck?.decklist?.length ? chosenDeck.decklist : null
+
     let error
     if (editingId) {
+      // Editing keeps the list saved when the match was logged. It is only
+      // replaced if you switched decks, or ticked the "save current list" box.
+      const original = myMatches.find((m) => m.id === editingId)
+      if ((original && original.deck_id !== form.deckId) || attachList) payload.decklist = deckList
       ;({ error } = await supabase.from('matches').update(payload).eq('id', editingId))
     } else {
       const row = { ...payload, player_id: userId }
+      if (deckList) row.decklist = deckList
       if (activeTournament) row.tournament_id = activeTournament.id
       ;({ error } = await supabase.from('matches').insert(row))
     }
@@ -111,6 +126,7 @@ export default function LogMatch({ activeTournament, onTournamentChange }) {
     } else {
       setSaved(true)
       setEditingId(null)
+      setAttachList(false)
       setForm({ ...emptyForm, deckId: form.deckId })
       setOpponentLeaderCard(null)
       loadMyMatches(userId)
@@ -127,6 +143,25 @@ export default function LogMatch({ activeTournament, onTournamentChange }) {
   const runMatches = activeTournament
     ? myMatches.filter((m) => m.tournament_id === activeTournament.id)
     : []
+
+  // What will happen to the decklist when this form is saved.
+  const selectedDeck = decks.find((d) => d.id === form.deckId)
+  const selectedHasList = !!selectedDeck?.decklist?.length
+  const originalMatch = editingId ? myMatches.find((m) => m.id === editingId) : null
+  const deckChanged = !!originalMatch && originalMatch.deck_id !== form.deckId
+  const originalHasList = !!originalMatch?.decklist?.length
+  const offerAttach = !!editingId && !deckChanged && !originalHasList && selectedHasList
+
+  let listHint = null
+  if (selectedDeck) {
+    if (!editingId || deckChanged) {
+      listHint = selectedHasList
+        ? "This deck's current decklist will be saved with the match."
+        : 'No decklist on this deck yet — add one on the Decks tab to record it with your matches.'
+    } else if (originalHasList) {
+      listHint = 'This match keeps the decklist that was saved when it was logged.'
+    }
+  }
 
   return (
     <div>
@@ -152,13 +187,29 @@ export default function LogMatch({ activeTournament, onTournamentChange }) {
           </p>
         )}
         {decks.length === 0 && (
-          <p style={{ color: 'var(--parchment-dim)' }}>You don\u2019t have any decks yet — add one on the Decks tab first.</p>
+          <p style={{ color: 'var(--parchment-dim)' }}>You don’t have any decks yet — add one on the Decks tab first.</p>
         )}
         <form onSubmit={handleSubmit}>
           <label htmlFor="deck">Your deck</label>
-          <select id="deck" value={form.deckId} onChange={(e) => updateField('deckId', e.target.value)} style={{ marginBottom: '0.9rem' }}>
-            {decks.map((d) => <option key={d.id} value={d.id}>{d.name} ({d.leader})</option>)}
-          </select>
+          <div style={{ marginBottom: '0.9rem' }}>
+            <select id="deck" value={form.deckId} onChange={(e) => updateField('deckId', e.target.value)}>
+              {decks.map((d) => <option key={d.id} value={d.id}>{d.name} ({d.leader})</option>)}
+            </select>
+            {listHint && (
+              <p style={{ margin: '0.4rem 0 0', fontSize: '0.8rem', color: 'var(--parchment-dim)' }}>{listHint}</p>
+            )}
+            {offerAttach && (
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: '0.5rem 0 0', fontSize: '0.82rem', color: 'var(--parchment)' }}>
+                <input
+                  type="checkbox"
+                  checked={attachList}
+                  onChange={(e) => setAttachList(e.target.checked)}
+                  style={{ width: 'auto' }}
+                />
+                Save this deck's current decklist with this match
+              </label>
+            )}
+          </div>
 
           <label htmlFor="oppDeck">Opponent's leader</label>
           <div style={{ marginBottom: '0.9rem' }}>
@@ -239,6 +290,9 @@ export default function LogMatch({ activeTournament, onTournamentChange }) {
                   </td>
                   <td style={{ whiteSpace: 'normal', maxWidth: 220 }}>{m.notes || '—'}</td>
                   <td style={{ display: 'flex', gap: '0.5rem' }}>
+                    {m.decklist?.length > 0 && (
+                      <button onClick={() => setListFor(m)} style={{ fontSize: '0.78rem' }}>Decklist</button>
+                    )}
                     <button onClick={() => startEdit(m)} style={{ fontSize: '0.78rem' }}>Edit</button>
                     <button onClick={() => handleDelete(m.id)} style={{ fontSize: '0.78rem' }}>Remove</button>
                   </td>
@@ -249,6 +303,8 @@ export default function LogMatch({ activeTournament, onTournamentChange }) {
           </div>
         )}
       </div>
+
+      {listFor && <DecklistDialog match={listFor} onClose={() => setListFor(null)} />}
     </div>
   )
 }

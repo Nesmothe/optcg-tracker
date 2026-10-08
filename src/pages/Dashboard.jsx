@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../supabaseClient'
 import UsernameTag from '../components/UsernameTag.jsx'
 import WinLossRing from '../components/WinLossRing.jsx'
+import DecklistDialog from '../components/DecklistDialog.jsx'
 
 const ALL_PLAYERS = 'all'
 const ALL_DECKS = 'all'
@@ -14,6 +15,7 @@ export default function Dashboard() {
   const [profiles, setProfiles] = useState([])
   const [currentUserId, setCurrentUserId] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [listFor, setListFor] = useState(null) // match whose saved decklist is open in the popup
 
   const [playerFilter, setPlayerFilter] = useState(null) // defaults to "me" once known
   const [deckFilter, setDeckFilter] = useState(ALL_DECKS)
@@ -299,7 +301,7 @@ export default function Dashboard() {
         <div className="table-scroll">
         <table>
           <thead>
-            <tr><th>Player</th><th>Deck</th><th>Opponent</th><th>Vs. player</th><th>Result</th><th>Notes</th></tr>
+            <tr><th>Player</th><th>Deck</th><th>Opponent</th><th>Vs. player</th><th>Result</th><th>Decklist</th><th>Notes</th></tr>
           </thead>
           <tbody>
             {finalFiltered.slice(0, 15).map((m) => (
@@ -313,6 +315,11 @@ export default function Dashboard() {
                     ? <span className="win-tag">Win</span>
                     : <span className="loss-tag">Loss</span>}
                 </td>
+                <td>
+                  {m.decklist?.length > 0
+                    ? <button onClick={() => setListFor(m)} style={{ fontSize: '0.78rem' }}>View</button>
+                    : '—'}
+                </td>
                 <td style={{ whiteSpace: 'normal', maxWidth: 220 }}>{m.notes || '—'}</td>
               </tr>
             ))}
@@ -320,6 +327,8 @@ export default function Dashboard() {
         </table>
         </div>
       </div>
+
+      {listFor && <DecklistDialog match={listFor} onClose={() => setListFor(null)} />}
     </div>
   )
 }

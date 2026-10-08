@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../supabaseClient'
 import UsernameTag from '../components/UsernameTag.jsx'
+import DecklistDialog from '../components/DecklistDialog.jsx'
 import { STANDING_OPTIONS, formatRunDate, recordOf } from '../lib/tournaments'
 
 export default function Tournaments() {
@@ -13,13 +14,14 @@ export default function Tournaments() {
   const [standingDraft, setStandingDraft] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [listFor, setListFor] = useState(null) // match whose saved decklist is open in the popup
 
   async function load() {
     const [{ data: r, error: runError }, { data: m }, { data: userData }] = await Promise.all([
       supabase.from('tournaments').select('*, profiles(username)').order('started_at', { ascending: false }),
       supabase
         .from('matches')
-        .select('id, tournament_id, result, opponent_deck, opponent_leader_image_url, played_at, decks(name, leader_image_url)')
+        .select('id, tournament_id, result, opponent_deck, opponent_leader_image_url, played_at, decklist, decks(name, leader_image_url)')
         .not('tournament_id', 'is', null)
         .order('played_at', { ascending: true }),
       supabase.auth.getUser(),
@@ -157,7 +159,7 @@ export default function Tournaments() {
                 <div className="table-scroll" style={{ marginTop: '0.8rem' }}>
                   <table>
                     <thead>
-                      <tr><th>Round</th><th>Your deck</th><th>Opponent</th><th>Result</th></tr>
+                      <tr><th>Round</th><th>Your deck</th><th>Opponent</th><th>Result</th><th>Decklist</th></tr>
                     </thead>
                     <tbody>
                       {runMatches.map((m, i) => (
@@ -175,6 +177,11 @@ export default function Tournaments() {
                               ? <span className="win-tag">Win</span>
                               : <span className="loss-tag">Loss</span>}
                           </td>
+                          <td>
+                            {m.decklist?.length > 0
+                              ? <button onClick={() => setListFor(m)} style={{ fontSize: '0.78rem' }}>View</button>
+                              : '—'}
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -185,6 +192,8 @@ export default function Tournaments() {
           )
         })
       )}
+
+      {listFor && <DecklistDialog match={listFor} onClose={() => setListFor(null)} />}
     </div>
   )
 }

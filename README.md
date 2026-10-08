@@ -127,6 +127,17 @@ carried inside the link itself, so scanning needs no login — and anyone holdin
 that link can read that list. Like the leader search, the link only works on the
 deployed site, not on `localhost`.
 
+## Decklist saved with each match
+
+Run `supabase/migration_6_match_decklists.sql` in Supabase's SQL editor, then
+push the code. When you log a match, a **copy** of your deck's decklist is saved
+with it, so the match keeps the list you actually played even if you later
+replace the deck's list. View it from the *Decklist* button in "Your logged
+matches", the Dashboard's Recent matches, or a tournament run. Editing a match
+keeps its saved list (unless you switch decks, or tick the box to attach the
+deck's current list to an older match). The migration file also has an optional,
+commented-out query to give your earlier matches their deck's current list.
+
 ## Notes on the data model
 - **Decks** belong to one owner (you can't log matches for a deck you didn't create).
 - **Matches** record your deck, the opponent's deck (free text — they don't need an
