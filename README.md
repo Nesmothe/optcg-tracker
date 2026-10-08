@@ -111,6 +111,22 @@ What's new:
   still in Supabase with its old data; drop it whenever you like with
   `drop table matchup_notes;`
 
+## Cascade delete + decklist QR codes
+
+1. In Supabase's SQL editor, run `supabase/migration_5_cascade_run_matches.sql`.
+   From then on, deleting a tournament run makes the database delete the
+   matches logged in it too (matches that were already unlinked by an earlier
+   delete stay as ordinary matches).
+2. Push the code. `npm install` (Vercel does it automatically) picks up the new
+   `qrcode` dependency.
+
+On the **Decks** tab, open a deck's decklist and hit *Show QR code*. Scanning it
+opens a link served by `/api/decklist`, which downloads the list as a `.txt`
+file in OPTCG Sim format (importable into the Sim and CROCO). The decklist is
+carried inside the link itself, so scanning needs no login — and anyone holding
+that link can read that list. Like the leader search, the link only works on the
+deployed site, not on `localhost`.
+
 ## Notes on the data model
 - **Decks** belong to one owner (you can't log matches for a deck you didn't create).
 - **Matches** record your deck, the opponent's deck (free text — they don't need an

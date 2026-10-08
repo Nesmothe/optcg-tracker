@@ -1,10 +1,12 @@
 import { useState } from 'react'
 import { baseCardId, cardImageUrl, deckTotal, toSimFormat } from '../lib/decklist'
+import DecklistQR from './DecklistQR.jsx'
 
 // Card-image grid for a stored decklist, with a one-click export in the
 // OPTCG Sim format (which CROCO imports too).
-export default function DecklistView({ cards }) {
+export default function DecklistView({ cards, deckName }) {
   const [copied, setCopied] = useState(false)
+  const [showQr, setShowQr] = useState(false)
 
   async function copy() {
     const text = toSimFormat(cards)
@@ -26,7 +28,15 @@ export default function DecklistView({ cards }) {
         <button type="button" onClick={copy} style={{ fontSize: '0.78rem' }}>
           {copied ? 'Copied!' : 'Copy decklist'}
         </button>
+        <button type="button" onClick={() => setShowQr((v) => !v)} style={{ fontSize: '0.78rem' }}>
+          {showQr ? 'Hide QR code' : 'Show QR code'}
+        </button>
       </div>
+      {showQr && (
+        <div style={{ marginBottom: '1rem' }}>
+          <DecklistQR cards={cards} deckName={deckName} />
+        </div>
+      )}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
         {cards.map((c) => (
           <div key={c.id} title={`${c.count}x ${c.id}`} style={{ position: 'relative', width: 72 }}>

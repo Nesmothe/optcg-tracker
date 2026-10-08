@@ -55,3 +55,11 @@ export function cardImageUrl(id) {
 export function toSimFormat(cards) {
   return (cards || []).map((c) => `${c.count}x${c.id}`).join('\n')
 }
+
+// Link that downloads this decklist as a .txt file (served by api/decklist.js).
+// The list is packed into the URL as "OP05-060x1,OP01-088x4" — kept compact
+// (commas unencoded) so the QR code built from it stays easy to scan.
+export function decklistFileUrl(origin, name, cards) {
+  const list = (cards || []).map((c) => `${c.id}x${c.count}`).join(',')
+  return `${origin}/api/decklist?n=${encodeURIComponent(name || 'decklist')}&l=${list}`
+}

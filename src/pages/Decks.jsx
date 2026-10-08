@@ -45,7 +45,7 @@ function DeckDetail({ deck, isOwner, onSaved }) {
 
   return (
     <div style={{ padding: '0.4rem 0 0.8rem' }}>
-      {hasList && <DecklistView cards={deck.decklist} />}
+      {hasList && <DecklistView cards={deck.decklist} deckName={deck.name} />}
       {!hasList && !isOwner && (
         <p style={{ color: 'var(--parchment-dim)', margin: 0 }}>No decklist saved for this deck.</p>
       )}
