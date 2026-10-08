@@ -24,8 +24,8 @@ create policy "users manage their own tournaments" on tournaments
 create unique index if not exists tournaments_one_active_per_player
   on tournaments (player_id) where ended_at is null;
 
--- Link matches to a run. Deleting a run keeps its matches in your stats
--- (they just stop belonging to a run).
+-- Link matches to a run. (The app deletes a run's matches itself when a run
+-- is deleted; this column's on-delete rule is only a fallback.)
 alter table matches
   add column if not exists tournament_id uuid references tournaments(id) on delete set null;
 

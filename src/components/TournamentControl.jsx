@@ -4,7 +4,7 @@ import { STANDING_OPTIONS, formatRunDate } from '../lib/tournaments'
 
 // Start / end a tournament run. While a run is active, every match logged on
 // the Log tab is attached to it automatically (see LogMatch).
-export default function TournamentControl({ userId, activeTournament, onChange, runMatches }) {
+export default function TournamentControl({ userId, activeTournament, onChange, runMatches, onMatchesDeleted }) {
   const [name, setName] = useState('')
   const [standing, setStanding] = useState('')
   const [ending, setEnding] = useState(false)
@@ -42,9 +42,20 @@ export default function TournamentControl({ userId, activeTournament, onChange, 
   }
 
   async function discard() {
-    if (!window.confirm('Discard this tournament run? The matches you logged stay in your stats, they just stop belonging to a run.')) return
-    await supabase.from('tournaments').delete().eq('id', activeTournament.id)
+    const count = runMatches.length
+    const message = count > 0
+      ? `Discard this tournament run and delete its ${count} logged match${count === 1 ? '' : 'es'}? This can't be undone.`
+      : 'Discard this tournament run?'
+    if (!window.confirm(message)) return
+    setError('')
+
+    const { error: matchError } = await supabase.from('matches').delete().eq('tournament_id', activeTournament.id)
+    if (matchError) { setError(matchError.message); return }
+    const { error: runError } = await supabase.from('tournaments').delete().eq('id', activeTournament.id)
+    if (runError) { setError(runError.message); return }
+
     setEnding(false)
+    onMatchesDeleted?.()
     onChange(null)
   }
 

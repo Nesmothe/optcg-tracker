@@ -135,6 +135,7 @@ export default function LogMatch({ activeTournament, onTournamentChange }) {
         activeTournament={activeTournament}
         onChange={onTournamentChange}
         runMatches={runMatches}
+        onMatchesDeleted={() => loadMyMatches(userId)}
       />
 
       <div className="card" style={{ maxWidth: 520, marginBottom: '1.5rem' }}>

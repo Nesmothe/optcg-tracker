@@ -51,9 +51,19 @@ export default function Tournaments() {
     load()
   }
 
-  async function deleteRun(runId) {
-    if (!window.confirm('Delete this tournament run? Its matches stay in your stats.')) return
-    await supabase.from('tournaments').delete().eq('id', runId)
+  async function deleteRun(runId, matchCount) {
+    const message = matchCount > 0
+      ? `Delete this tournament run and its ${matchCount} logged match${matchCount === 1 ? '' : 'es'}? This can't be undone.`
+      : "Delete this tournament run? This can't be undone."
+    if (!window.confirm(message)) return
+    setError('')
+
+    // Matches first, then the run, so a failure never leaves matches behind
+    // that silently lose their run.
+    const { error: matchError } = await supabase.from('matches').delete().eq('tournament_id', runId)
+    if (matchError) { setError(matchError.message); return }
+    const { error: runError } = await supabase.from('tournaments').delete().eq('id', runId)
+    if (runError) { setError(runError.message); return }
     load()
   }
 
@@ -139,7 +149,7 @@ export default function Tournaments() {
                   </button>
                 )}
                 {isOwner && (
-                  <button style={{ fontSize: '0.78rem' }} onClick={() => deleteRun(run.id)}>Delete</button>
+                  <button style={{ fontSize: '0.78rem' }} onClick={() => deleteRun(run.id, runMatches.length)}>Delete</button>
                 )}
               </div>
 

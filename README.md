@@ -101,7 +101,7 @@ What's new:
   Every match you log is then attached to it (header shows "run in progress"
   from any tab). *End tournament* asks for your final standing. The
   **Tournaments** tab lists past runs with their record and match-by-match
-  breakdown.
+  breakdown. Deleting a run also deletes the matches logged in it.
 - **Decklists** — paste an OPTCG Sim export when creating a deck (leader on the
   first line, e.g. `1xOP05-060`, then `4xOP01-088`, …). The leader is detected
   automatically. Existing decks can get a decklist via the **Decks** tab →
