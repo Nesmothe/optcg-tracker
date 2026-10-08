@@ -218,3 +218,13 @@ th { color: var(--parchment-dim); font-weight: 500; font-size: 0.8rem; text-tran
   .ring-row { gap: 0.9rem; }
   .vs-group { gap: calc(0.9rem + 10px); }
 }
+
+.run-pill {
+  margin-top: 0.45rem;
+  padding: 0.15em 0.75em;
+  font-size: 0.75rem;
+  border-radius: 999px;
+  border-color: var(--brass);
+  background: transparent;
+  color: var(--brass-bright);
+}

@@ -5,14 +5,14 @@ import SetUsername from './pages/SetUsername.jsx'
 import Dashboard from './pages/Dashboard.jsx'
 import Decks from './pages/Decks.jsx'
 import LogMatch from './pages/LogMatch.jsx'
-import MatchupNotes from './pages/MatchupNotes.jsx'
+import Tournaments from './pages/Tournaments.jsx'
 import UsernameTag from './components/UsernameTag.jsx'
 
 const TABS = [
   { id: 'dashboard', label: 'Dashboard' },
   { id: 'log', label: 'Log a match' },
+  { id: 'tournaments', label: 'Tournaments' },
   { id: 'decks', label: 'Decks' },
-  { id: 'notes', label: 'Matchup notes' },
 ]
 
 export default function App() {
@@ -21,6 +21,7 @@ export default function App() {
   const [tab, setTab] = useState('dashboard')
   const [username, setUsername] = useState(null)
   const [profileChecked, setProfileChecked] = useState(false)
+  const [activeTournament, setActiveTournament] = useState(null)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -43,6 +44,19 @@ export default function App() {
       })
   }, [session])
 
+  // Is there a tournament run in progress? Held here (not in the Log tab) so
+  // the header can show it from any tab.
+  useEffect(() => {
+    if (!session || !username) { setActiveTournament(null); return }
+    supabase
+      .from('tournaments')
+      .select('*')
+      .eq('player_id', session.user.id)
+      .is('ended_at', null)
+      .maybeSingle()
+      .then(({ data }) => setActiveTournament(data ?? null))
+  }, [session, username])
+
   if (loading) return null
 
   if (!session) return <Login />
@@ -61,6 +75,11 @@ export default function App() {
           <p style={{ margin: 0, fontSize: '0.85rem' }}>
             Logged in as <UsernameTag username={username} />
           </p>
+          {activeTournament && (
+            <button className="run-pill" onClick={() => setTab('log')}>
+              ● Tournament run in progress
+            </button>
+          )}
         </div>
         <button onClick={() => supabase.auth.signOut()}>Sign out</button>
       </div>
@@ -78,9 +97,9 @@ export default function App() {
       </nav>
 
       {tab === 'dashboard' && <Dashboard />}
-      {tab === 'log' && <LogMatch />}
+      {tab === 'log' && <LogMatch activeTournament={activeTournament} onTournamentChange={setActiveTournament} />}
+      {tab === 'tournaments' && <Tournaments />}
       {tab === 'decks' && <Decks />}
-      {tab === 'notes' && <MatchupNotes />}
     </div>
   )
 }

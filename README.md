@@ -1,7 +1,7 @@
 # Logbook — OPTCG Winrate Tracker
 
 A small shared web app for you and your friends to log One Piece TCG match results,
-see winrate breakdowns by deck and matchup, and keep shared notes per matchup.
+see winrate breakdowns by deck and matchup, track tournament runs, and keep decklists.
 
 ## Stack
 - React + Vite (frontend)
@@ -89,12 +89,32 @@ set CROCO hasn't indexed yet), the field just behaves like a normal text box
 — nothing is blocked, it just won't have the search dropdown or stored art
 for that entry.
 
+## Updating for tournament runs + decklists
+
+1. In Supabase's SQL editor, run `supabase/migration_4_tournaments_decklists.sql`
+   **before** (or right after) deploying — it adds the `tournaments` table, a
+   `tournament_id` column on matches, and a `decklist` column on decks.
+2. Push the code as usual; Vercel redeploys.
+
+What's new:
+- **Tournament runs** — on the "Log a match" tab, hit *Start tournament run*.
+  Every match you log is then attached to it (header shows "run in progress"
+  from any tab). *End tournament* asks for your final standing. The
+  **Tournaments** tab lists past runs with their record and match-by-match
+  breakdown.
+- **Decklists** — paste an OPTCG Sim export when creating a deck (leader on the
+  first line, e.g. `1xOP05-060`, then `4xOP01-088`, …). The leader is detected
+  automatically. Existing decks can get a decklist via the **Decks** tab →
+  *Add*. *Copy decklist* exports the same format, which OPTCG Sim and CROCO
+  both import.
+- **Matchup notes** were removed from the app. The `matchup_notes` table is
+  still in Supabase with its old data; drop it whenever you like with
+  `drop table matchup_notes;`
+
 ## Notes on the data model
 - **Decks** belong to one owner (you can't log matches for a deck you didn't create).
 - **Matches** record your deck, the opponent's deck (free text — they don't need an
   account), win/loss, and optional notes.
-- **Matchup notes** are keyed by leader name (not deck ID) so a note like "Purple Luffy
-  vs Red Kid" applies group-wide, even if two different people pilot Purple Luffy.
 - Everyone with an account can see everyone's matches and notes (shared stats), but can
   only edit their own — enforced by Postgres row-level security, not just the UI.
 

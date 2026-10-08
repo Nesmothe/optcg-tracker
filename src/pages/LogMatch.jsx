@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../supabaseClient'
 import LeaderSearch from '../components/LeaderSearch.jsx'
+import TournamentControl from '../components/TournamentControl.jsx'
 
 const emptyForm = {
   deckId: '',
@@ -11,7 +12,7 @@ const emptyForm = {
   notes: '',
 }
 
-export default function LogMatch() {
+export default function LogMatch({ activeTournament, onTournamentChange }) {
   const [decks, setDecks] = useState([])
   const [myMatches, setMyMatches] = useState([])
   const [form, setForm] = useState(emptyForm)
@@ -100,7 +101,9 @@ export default function LogMatch() {
     if (editingId) {
       ;({ error } = await supabase.from('matches').update(payload).eq('id', editingId))
     } else {
-      ;({ error } = await supabase.from('matches').insert({ ...payload, player_id: userId }))
+      const row = { ...payload, player_id: userId }
+      if (activeTournament) row.tournament_id = activeTournament.id
+      ;({ error } = await supabase.from('matches').insert(row))
     }
 
     if (error) {
@@ -121,10 +124,32 @@ export default function LogMatch() {
     loadMyMatches(userId)
   }
 
+  const runMatches = activeTournament
+    ? myMatches.filter((m) => m.tournament_id === activeTournament.id)
+    : []
+
   return (
     <div>
+      <TournamentControl
+        userId={userId}
+        activeTournament={activeTournament}
+        onChange={onTournamentChange}
+        runMatches={runMatches}
+      />
+
       <div className="card" style={{ maxWidth: 520, marginBottom: '1.5rem' }}>
-        <h3>{editingId ? 'Edit match' : 'Log a match'}</h3>
+        <h3>
+          {editingId
+            ? 'Edit match'
+            : activeTournament
+              ? `Log a match — round ${runMatches.length + 1}`
+              : 'Log a match'}
+        </h3>
+        {activeTournament && !editingId && (
+          <p style={{ margin: '0 0 0.9rem', fontSize: '0.82rem', color: 'var(--parchment-dim)' }}>
+            This match will be added to your tournament run.
+          </p>
+        )}
         {decks.length === 0 && (
           <p style={{ color: 'var(--parchment-dim)' }}>You don\u2019t have any decks yet — add one on the Decks tab first.</p>
         )}
@@ -207,6 +232,9 @@ export default function LogMatch() {
                     {m.result === 'win'
                       ? <span className="win-tag">Win</span>
                       : <span className="loss-tag">Loss</span>}
+                    {m.tournament_id && (
+                      <span style={{ color: 'var(--brass)', fontSize: '0.72rem', marginLeft: '0.45rem' }}>tournament</span>
+                    )}
                   </td>
                   <td style={{ whiteSpace: 'normal', maxWidth: 220 }}>{m.notes || '—'}</td>
                   <td style={{ display: 'flex', gap: '0.5rem' }}>

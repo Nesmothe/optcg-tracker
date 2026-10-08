@@ -6,24 +6,19 @@ import { searchLeaders } from '../lib/crocoApi'
 // full card ({id, name, image}) via onSelect. Typing without selecting still
 // updates the plain text via onTextChange, so the field degrades gracefully
 // to free text if the API is down or a leader isn't found yet.
+//
+// Searches are triggered by the user typing — not by the value changing — so
+// setting the value from outside (e.g. auto-filling a leader from an imported
+// decklist) never pops the dropdown open.
 export default function LeaderSearch({ value, onTextChange, onSelect, placeholder, id }) {
   const [results, setResults] = useState([])
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const boxRef = useRef(null)
+  const timerRef = useRef(null)
+  const requestRef = useRef(0)
 
-  useEffect(() => {
-    const query = value?.trim()
-    if (!query || query.length < 2) { setResults([]); return }
-    let cancelled = false
-    setLoading(true)
-    setOpen(true)
-    const t = setTimeout(async () => {
-      const hits = await searchLeaders(query)
-      if (!cancelled) { setResults(hits); setLoading(false); setOpen(true) }
-    }, 350)
-    return () => { cancelled = true; clearTimeout(t) }
-  }, [value])
+  useEffect(() => () => clearTimeout(timerRef.current), [])
 
   useEffect(() => {
     function handleClickOutside(e) {
@@ -33,10 +28,33 @@ export default function LeaderSearch({ value, onTextChange, onSelect, placeholde
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
+  function handleChange(e) {
+    const text = e.target.value
+    onTextChange(text)
+    onSelect?.(null)
+
+    clearTimeout(timerRef.current)
+    const requestId = ++requestRef.current // invalidates any in-flight search
+    const query = text.trim()
+    if (query.length < 2) {
+      setResults([]); setLoading(false); setOpen(false)
+      return
+    }
+    setLoading(true)
+    setOpen(true)
+    timerRef.current = setTimeout(async () => {
+      const hits = await searchLeaders(query)
+      if (requestRef.current !== requestId) return
+      setResults(hits); setLoading(false); setOpen(true)
+    }, 350)
+  }
+
   function pick(card) {
+    clearTimeout(timerRef.current)
+    requestRef.current++
+    setResults([]); setLoading(false); setOpen(false)
     onSelect?.(card)
     onTextChange(card.name)
-    setOpen(false)
   }
 
   return (
@@ -44,7 +62,7 @@ export default function LeaderSearch({ value, onTextChange, onSelect, placeholde
       <input
         id={id}
         value={value}
-        onChange={(e) => { onTextChange(e.target.value); onSelect?.(null) }}
+        onChange={handleChange}
         onFocus={() => { if (results.length) setOpen(true) }}
         placeholder={placeholder}
         autoComplete="off"

@@ -57,3 +57,16 @@ export async function searchLeaders(query) {
     .filter((r) => r.status === 'fulfilled' && r.value.name)
     .map((r) => r.value)
 }
+
+// Fetches one card's details through the relay (used to identify a leader
+// from the first line of an imported decklist). Returns null on any failure.
+export async function fetchCard(id) {
+  try {
+    const res = await fetch(`${API_BASE}?path=card/${id}`)
+    if (!res.ok) return null
+    return await res.json()
+  } catch (e) {
+    console.error('[card lookup] failed:', e)
+    return null
+  }
+}
